@@ -7,16 +7,16 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 
 const Cards = () => {
-  // State for fetching RFID data
-  const [rfidData, setRfidData] = useState({});
-  
+  // State for WebSocket RFID data
+  const [rfidData, setRfidData] = useState(null);
+
   // Separate state for the Add Card form
   const [addCardId, setAddCardId] = useState('');
   const [addKccId, setAddKccId] = useState('');
   const [addMaxAmount, setAddMaxAmount] = useState('');
   const [addCardStatus, setAddCardStatus] = useState('Active');
   const [addAccessStatus, setAddAccessStatus] = useState('Manager');
-  
+
   // State for editing cards
   const [kccId, setKccId] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
@@ -25,28 +25,39 @@ const Cards = () => {
   const [cards, setCards] = useState([]);
   const [isEditing, setIsEditing] = useState('');
 
-  // Fetch RFID data on interval
+  // Connect to WebSocket to receive RFID data
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchRfidData();
-    }, 1000);
-    return () => clearInterval(interval);
+    const ws = new WebSocket('ws://20.92.202.139:3600');
+
+    ws.onopen = () => {
+      console.log('Connected to WebSocket server');
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setRfidData(data);
+
+      // Check if the unique_key is 'THAI' before setting the Card ID
+      if (data.unique_key === 'THAI') {
+        setAddCardId(data.decimal_value || ''); // Set Add Card form's Card ID with the RFID decimal value
+      }
+      
+      console.log('Received data from WebSocket:', data);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
 
   // Fetch available cards
   useEffect(() => {
     fetchAvailableCards();
   }, []);
-
-  const fetchRfidData = async () => {
-    try {
-      const response = await axios.get('http://127.0.0.1:8000/get_rfid');
-      setRfidData(response.data);
-      setAddCardId(response.data.decimal_value || ''); // Set the Add Card form's cardId
-    } catch (error) {
-      console.error('Error fetching RFID data:', error);
-    }
-  };
 
   const fetchAvailableCards = async () => {
     try {
@@ -60,7 +71,7 @@ const Cards = () => {
   // Add Card
   const handleAddCard = async (e) => {
     e.preventDefault();
-    if (!rfidData.decimal_value) {
+    if (!rfidData || !rfidData.decimal_value) {
       alert('No RFID data available. Please scan the card.');
       return;
     }
@@ -79,7 +90,7 @@ const Cards = () => {
       setAddMaxAmount('');
       setAddCardStatus('Active');
       setAddAccessStatus('Manager');
-      setRfidData({});
+      setRfidData(null);
       alert('Card details added successfully');
       fetchAvailableCards();
     } catch (error) {
@@ -237,72 +248,87 @@ const Cards = () => {
             <TableBody>
               {cards.map((card) => (
                 <TableRow key={card.card_id}>
-                  <TableCell>{card.card_id}</TableCell>
-                  {isEditing === card.card_id ? (
-                    <>
-                      <TableCell>
-                        <TextField
-                          value={kccId}
-                          onChange={(e) => setKccId(e.target.value)}
-                          variant="outlined"
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          value={maxAmount}
-                          onChange={(e) => setMaxAmount(e.target.value)}
-                          variant="outlined"
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={cardStatus}
-                          onChange={(e) => setCardStatus(e.target.value)}
-                          size="small"
-                        >
-                          <MenuItem value="Active">Active</MenuItem>
-                          <MenuItem value="Inprocess">Inprocess</MenuItem>
-                          <MenuItem value="Deactive">Deactive</MenuItem>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={accessStatus}
-                          onChange={(e) => setAccessStatus(e.target.value)}
-                          size="small"
-                        >
-                          <MenuItem value="Manager">Manager</MenuItem>
-                          <MenuItem value="Customer">Customer</MenuItem>
-                          <MenuItem value="Guest">Guest</MenuItem>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => handleSaveCard(card.card_id)}>
+                  <TableCell>
+                    {isEditing === card.card_id ? (
+                      <TextField
+                      value={addCardId || card.card_id} 
+                        disabled
+                      />
+                    ) : (
+                      card.card_id
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isEditing === card.card_id ? (
+                      <TextField
+                        value={kccId}
+                        onChange={(e) => setKccId(e.target.value)}
+                      />
+                    ) : (
+                      card.kcc_id
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isEditing === card.card_id ? (
+                      <TextField
+                        value={maxAmount}
+                        onChange={(e) => setMaxAmount(e.target.value)}
+                      />
+                    ) : (
+                      card.max_amount
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isEditing === card.card_id ? (
+                      <Select
+                        value={cardStatus}
+                        onChange={(e) => setCardStatus(e.target.value)}
+                        displayEmpty
+                      >
+                        <MenuItem value="Active">Active</MenuItem>
+                        <MenuItem value="Inprocess">Inprocess</MenuItem>
+                        <MenuItem value="Deactive">Deactive</MenuItem>
+                      </Select>
+                    ) : (
+                      card.card_status
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isEditing === card.card_id ? (
+                      <Select
+                        value={accessStatus}
+                        onChange={(e) => setAccessStatus(e.target.value)}
+                        displayEmpty
+                      >
+                        <MenuItem value="Manager">Manager</MenuItem>
+                        <MenuItem value="Customer">Customer</MenuItem>
+                        <MenuItem value="Guest">Guest</MenuItem>
+                      </Select>
+                    ) : (
+                      card.acces_status
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isEditing === card.card_id ? (
+                      <>
+                        <IconButton onClick={() => handleSaveCard(card.card_id)} color="primary">
                           <SaveIcon />
                         </IconButton>
-                        <IconButton onClick={handleCancelEdit}>
+                        <IconButton onClick={handleCancelEdit} color="secondary">
                           <CancelIcon />
                         </IconButton>
-                      </TableCell>
-                    </>
-                  ) : (
-                    <>
-                      <TableCell>{card.kcc_id}</TableCell>
-                      <TableCell>{card.max_amount}</TableCell>
-                      <TableCell>{card.card_status}</TableCell>
-                      <TableCell>{card.acces_status}</TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => handleEditCard(card)}>
+                      </>
+                    ) : (
+                      <>
+                        <IconButton onClick={() => handleEditCard(card)} color="primary">
                           <EditIcon />
                         </IconButton>
-                        <IconButton onClick={() => handleRemoveCard(card.card_id)}>
+                        <IconButton onClick={() => handleRemoveCard(card.card_id)} color="secondary">
                           <DeleteIcon />
                         </IconButton>
-                      </TableCell>
-                    </>
-                  )}
+                      </>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
