@@ -25,6 +25,11 @@ const Cards = () => {
   const [cards, setCards] = useState([]);
   const [isEditing, setIsEditing] = useState('');
 
+  // State for search by card id and kcc id
+  const [searchCardId, setSearchCardId] = useState('');
+  const [searchKccId, setSearchKccId] = useState('');
+
+
   // Connect to WebSocket to receive RFID data
   useEffect(() => {
     const ws = new WebSocket('ws://20.92.202.139:3600');
@@ -151,6 +156,14 @@ const Cards = () => {
     setAccessStatus('Manager');
   };
 
+  // filter cards details 
+  const filteredCards = cards.filter((card) => {
+    return (
+      (searchCardId === '' || card.card_id.toString().includes(searchCardId)) &&
+      (searchKccId === '' || card.kcc_id.toString().includes(searchKccId))
+    );
+  });
+  
   return (
     <Box sx={{ padding: '20px', backgroundColor: '#e0f7fa', minHeight: 'auto' }}>
       {/* Add Card Section */}
@@ -174,7 +187,7 @@ const Cards = () => {
               label="Card ID"
               variant="outlined"
               value={addCardId}
-              disabled // disable card ID input
+              disabled 
             />
             <TextField
               label="KCC ID"
@@ -233,104 +246,122 @@ const Cards = () => {
         <Typography variant="h5" gutterBottom sx={{ color: '#00796b', fontWeight: 'bold' }}>
           Available Cards
         </Typography>
+
+        {/* Search Fields */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <TextField
+            label="Search by Card ID"
+            variant="outlined"
+            value={searchCardId}
+            onChange={(e) => setSearchCardId(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Search by KCC ID"
+            variant="outlined"
+            value={searchKccId}
+            onChange={(e) => setSearchKccId(e.target.value)}
+            fullWidth
+          />
+        </Box>
+
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell><strong>Card ID</strong></TableCell>
-                <TableCell><strong>KCC ID</strong></TableCell>
-                <TableCell><strong>Max Amount</strong></TableCell>
-                <TableCell><strong>Card Status</strong></TableCell>
-                <TableCell><strong>Access Status</strong></TableCell>
-                <TableCell><strong>Actions</strong></TableCell>
+                <TableCell>Card ID</TableCell>
+                <TableCell>KCC ID</TableCell>
+                <TableCell>Max Amount</TableCell>
+                <TableCell>Card Status</TableCell>
+                <TableCell>Access Status</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {cards.map((card) => (
-                <TableRow key={card.card_id}>
-                  <TableCell>
-                    {isEditing === card.card_id ? (
-                      <TextField
-                      value={addCardId || card.card_id} 
-                        disabled
-                      />
-                    ) : (
-                      card.card_id
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isEditing === card.card_id ? (
-                      <TextField
-                        value={kccId}
-                        onChange={(e) => setKccId(e.target.value)}
-                      />
-                    ) : (
-                      card.kcc_id
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isEditing === card.card_id ? (
-                      <TextField
-                        value={maxAmount}
-                        onChange={(e) => setMaxAmount(e.target.value)}
-                      />
-                    ) : (
-                      card.max_amount
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isEditing === card.card_id ? (
-                      <Select
-                        value={cardStatus}
-                        onChange={(e) => setCardStatus(e.target.value)}
-                        displayEmpty
-                      >
-                        <MenuItem value="Active">Active</MenuItem>
-                        <MenuItem value="Inprocess">Inprocess</MenuItem>
-                        <MenuItem value="Deactive">Deactive</MenuItem>
-                      </Select>
-                    ) : (
-                      card.card_status
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isEditing === card.card_id ? (
-                      <Select
-                        value={accessStatus}
-                        onChange={(e) => setAccessStatus(e.target.value)}
-                        displayEmpty
-                      >
-                        <MenuItem value="Manager">Manager</MenuItem>
-                        <MenuItem value="Customer">Customer</MenuItem>
-                        <MenuItem value="Guest">Guest</MenuItem>
-                      </Select>
-                    ) : (
-                      card.acces_status
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isEditing === card.card_id ? (
-                      <>
-                        <IconButton onClick={() => handleSaveCard(card.card_id)} color="primary">
-                          <SaveIcon />
-                        </IconButton>
-                        <IconButton onClick={handleCancelEdit} color="secondary">
-                          <CancelIcon />
-                        </IconButton>
-                      </>
-                    ) : (
-                      <>
-                        <IconButton onClick={() => handleEditCard(card)} color="primary">
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton onClick={() => handleRemoveCard(card.card_id)} color="secondary">
-                          <DeleteIcon />
-                        </IconButton>
-                      </>
-                    )}
-                  </TableCell>
+              {filteredCards.length > 0 ? (
+                filteredCards.map((card) => (
+                  <TableRow key={card.card_id}>
+                    <TableCell>{card.card_id}</TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
+                        <TextField
+                          value={kccId}
+                          onChange={(e) => setKccId(e.target.value)}
+                        />
+                      ) : (
+                        card.kcc_id
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
+                        <TextField
+                          value={maxAmount}
+                          onChange={(e) => setMaxAmount(e.target.value)}
+                        />
+                      ) : (
+                        card.max_amount
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
+                        <Select
+                          value={cardStatus}
+                          onChange={(e) => setCardStatus(e.target.value)}
+                          displayEmpty
+                          fullWidth
+                        >
+                          <MenuItem value="Active">Active</MenuItem>
+                          <MenuItem value="Inprocess">Inprocess</MenuItem>
+                          <MenuItem value="Deactive">Deactive</MenuItem>
+                        </Select>
+                      ) : (
+                        card.card_status
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
+                        <Select
+                          value={accessStatus}
+                          onChange={(e) => setAccessStatus(e.target.value)}
+                          displayEmpty
+                          fullWidth
+                        >
+                          <MenuItem value="Manager">Manager</MenuItem>
+                          <MenuItem value="Customer">Customer</MenuItem>
+                          <MenuItem value="Guest">Guest</MenuItem>
+                        </Select>
+                      ) : (
+                        card.acces_status
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
+                        <>
+                          <IconButton onClick={() => handleSaveCard(card.card_id)}color="primary">
+                            <SaveIcon />
+                          </IconButton>
+                          <IconButton onClick={handleCancelEdit}color="secondary">
+                            <CancelIcon />
+                          </IconButton>
+                        </>
+                      ) : (
+                        <>
+                           <IconButton onClick={() => handleEditCard(card)} color="primary">
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton onClick={() => handleRemoveCard(card.card_id)} color="secondary">
+                            <DeleteIcon />
+                          </IconButton>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6}>No cards available</TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </TableContainer>
