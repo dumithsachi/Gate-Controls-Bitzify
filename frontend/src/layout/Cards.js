@@ -337,10 +337,10 @@ const Cards = () => {
                     <TableCell>
                       {isEditing === card.card_id ? (
                         <>
-                          <IconButton onClick={() => handleSaveCard(card.card_id)}>
+                          <IconButton onClick={() => handleSaveCard(card.card_id)}color="primary">
                             <SaveIcon />
                           </IconButton>
-                          <IconButton onClick={handleCancelEdit}>
+                          <IconButton onClick={handleCancelEdit}color="secondary">
                             <CancelIcon />
                           </IconButton>
                         </>

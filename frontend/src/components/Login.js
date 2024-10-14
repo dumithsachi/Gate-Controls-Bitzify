@@ -5,11 +5,11 @@ import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
     const [formData, setFormData] = useState({
-        user_name: '',   // Updated to lowercase
-        user_password: ''   // Updated to lowercase
+        user_name: '',  
+        user_password: ''  
     });
     const [error, setError] = useState('');
-    const navigate = useNavigate();  // Hook to navigate
+    const navigate = useNavigate();
 
     const handleChange = (e) => {
         setFormData({
@@ -21,9 +21,9 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/login', formData);
+            await axios.post(`${process.env.REACT_APP_API_URL}/login`, formData);
             alert('Login successful');
-            navigate('/dashboard', { state: { username: formData.user_name } });  // Pass the username to Dashboard
+            navigate('/dashboard', { state: { username: formData.user_name } });
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
         }
@@ -39,22 +39,22 @@ const Login = () => {
                     <form onSubmit={handleSubmit}>
                         <TextField
                             label="Username"
-                            name="user_name"   // Updated to lowercase
+                            name="user_name"
                             fullWidth
                             variant="outlined"
                             margin="normal"
-                            value={formData.user_name}   // Updated to lowercase
+                            value={formData.user_name}
                             onChange={handleChange}
                             required
                         />
                         <TextField
                             label="Password"
-                            name="user_password"   // Updated to lowercase
+                            name="user_password"
                             type="password"
                             fullWidth
                             variant="outlined"
                             margin="normal"
-                            value={formData.user_password}   // Updated to lowercase
+                            value={formData.user_password}
                             onChange={handleChange}
                             required
                         />

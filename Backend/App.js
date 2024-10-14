@@ -81,7 +81,7 @@ app.get('/users', async (req, res) => {
 
 app.put('/updateUser', async (req, res) => {
     const { User_Id, User_Name, User_Password } = req.body;
-    console.log('name>>'+user_name+'<<pass>>'+user_password) 
+    //console.log('ID>>'+User_Id+'name>>'+ User_Name + '<<pass>>' +User_Password) 
     try {
         const pool = await sql.connect(dbConfig);
 
