@@ -1,373 +1,282 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Box, TextField, Button, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Select, MenuItem, Divider } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Cancel';
 
-const Cards = () => {
-  // State for WebSocket RFID data
-  const [rfidData, setRfidData] = useState(null);
-
-  // Separate state for the Add Card form
-  const [addCardId, setAddCardId] = useState('');
-  const [addKccId, setAddKccId] = useState('');
-  const [addMaxAmount, setAddMaxAmount] = useState('');
-  const [addCardStatus, setAddCardStatus] = useState('Active');
-  const [addAccessStatus, setAddAccessStatus] = useState('Manager');
-
-  // State for editing cards
-  const [kccId, setKccId] = useState('');
-  const [maxAmount, setMaxAmount] = useState('');
+const App = () => {
+  const [rfidData, setRfidData] = useState({});
+  const [cardId, setCardId] = useState('');
+  const [kccId, setKccId] = useState(22);
+  const [MaxAmount, setMaxAmount] = useState('');
   const [cardStatus, setCardStatus] = useState('Active');
   const [accessStatus, setAccessStatus] = useState('Manager');
-  const [cards, setCards] = useState([]);
-  const [isEditing, setIsEditing] = useState('');
+  const [cards, setCards] = useState([]); // State to hold available cards
+  const [selectedCard, setSelectedCard] = useState(null); // State for selected card
+  const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
 
-  // State for search by card id and kcc id
-  const [searchCardId, setSearchCardId] = useState('');
-  const [searchKccId, setSearchKccId] = useState('');
+  // Function to fetch RFID data from Flask server
+  const fetchRfidData = async () => {
+    try {
+      const response = await axios.get('http://192.168.1.10:8000/get_rfid');
+      setRfidData(response.data);
+      console.log('RFID Data:', response.data);
+    } catch (error) {
+      console.error('Error fetching RFID data:', error);
+    }
+  };
 
-
-  // Connect to WebSocket to receive RFID data
-  useEffect(() => {
-    const ws = new WebSocket('ws://20.92.202.139:3600');
-
-    ws.onopen = () => {
-      console.log('Connected to WebSocket server');
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setRfidData(data);
-
-      // Check if the unique_key is 'THAI' before setting the Card ID
-      if (data.unique_key === 'THAI') {
-        setAddCardId(data.decimal_value || ''); // Set Add Card form's Card ID with the RFID decimal value
-      }
-      
-      console.log('Received data from WebSocket:', data);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, []);
-
-  // Fetch available cards
-  useEffect(() => {
-    fetchAvailableCards();
-  }, []);
-
+  // Function to fetch available cards
   const fetchAvailableCards = async () => {
     try {
       const response = await axios.get('http://localhost:5000/getCards');
       setCards(response.data);
+      console.log('Fetched Cards:', response.data); 
     } catch (error) {
       console.error('Error fetching available cards:', error);
     }
   };
+  
 
-  // Add Card
   const handleAddCard = async (e) => {
-    e.preventDefault();
-    if (!rfidData || !rfidData.decimal_value) {
+    e.preventDefault(); // Prevent default form submission
+
+    if (!rfidData.decimal_value) {
       alert('No RFID data available. Please scan the card.');
       return;
     }
     const newCardDetails = {
-      Card_Id: addCardId,
-      kcc_Id: addKccId,
-      Max_Amount: addMaxAmount,
-      Card_Status: addCardStatus,
-      Acces_Status: addAccessStatus,
-    };
-    try {
-      await axios.post('http://localhost:5000/createCard', newCardDetails);
-      // Clear Add Card form after submission
-      setAddCardId('');
-      setAddKccId('');
-      setAddMaxAmount('');
-      setAddCardStatus('Active');
-      setAddAccessStatus('Manager');
-      setRfidData(null);
-      alert('Card details added successfully');
-      fetchAvailableCards();
-    } catch (error) {
-      console.log(error);
-      alert(error.response?.data?.message || 'Error adding card');
-    }
-  };
-
-  // Remove Card
-  const handleRemoveCard = async (cardId) => {
-    const confirmRemove = window.confirm("Are you sure you want to remove this card?");
-    if (confirmRemove) {
-      try {
-        await axios.delete(`http://localhost:5000/deleteCard/${cardId}`);
-        alert('Card removed successfully');
-        fetchAvailableCards();
-      } catch (error) {
-        alert('Error removing card');
-      }
-    }
-  };
-
-  // Edit Card
-  const handleEditCard = (card) => {
-    setIsEditing(card.card_id);  // Start editing this card
-    setKccId(card.kcc_id);       // Set edit form values
-    setMaxAmount(card.max_amount);
-    setCardStatus(card.card_status);
-    setAccessStatus(card.acces_status);
-  };
-
-  // Save Edited Card
-  const handleSaveCard = async (cardId) => {
-    const updatedCardDetails = {
-      Card_Id: cardId,
+      Card_Id: rfidData.decimal_value, // Use the scanned RFID data
       kcc_Id: kccId,
-      Max_Amount: maxAmount,
+      Max_Amount : MaxAmount,
       Card_Status: cardStatus,
       Acces_Status: accessStatus,
     };
 
     try {
-      await axios.put(`http://localhost:5000/updateCard`, updatedCardDetails);
-      alert('Card details updated successfully');
-      fetchAvailableCards();
-      setIsEditing(null);  // Exit editing mode
-    } catch (error) {
-      alert(error.response?.data?.message || 'Error updating card');
+      await axios.post('http://localhost:5000/createCard', newCardDetails);
+      setCardId('');
+      setKccId('');
+      setMaxAmount('')
+      setCardStatus('Active');
+      setAccessStatus('Manager');
+      setRfidData({}); // Clear the RFID data after adding the card
+      alert('Card details added successfully');
+      fetchAvailableCards(); // Refresh card list after adding
+    } 
+    catch (error) {
+      if (error.response && error.response.data.message) {
+        alert(error.response.data.message); // Show backend error message
+      } else {
+        alert('Error adding card');
+      }
+    }
+};
+
+
+  // Function to remove a card with confirmation
+  const handleRemoveCard = async (cardId) => {
+    const confirmRemove = window.confirm("Are you sure you want to remove this card?");
+    if (confirmRemove) {
+      try {
+        await axios.delete(`http://localhost:5000/deleteCard/${cardId}`); // Delete endpoint
+        alert('Card removed successfully');
+        fetchAvailableCards(); // Refresh card list after removing
+      } catch (error) {
+        alert('Error removing card:', error);
+      }
     }
   };
 
-  // Cancel Edit
-  const handleCancelEdit = () => {
-    setIsEditing(null);
-    setKccId('');
-    setMaxAmount('');
-    setCardStatus('Active');
-    setAccessStatus('Manager');
+  // Function to enable editing of selected card details
+  const handleEditCard = (card) => {
+    setSelectedCard(card);
+    setCardId(card.Card_Id);
+    setKccId(card.kcc_Id); 
+    setMaxAmount(card.Max_Amount);
+    setCardStatus(card.Card_Status);
+    setAccessStatus(card.Acces_Status);
+    setIsEditing(true); // Enable edit mode
+  };
+  
+
+  // Function to save the updated card details
+  const handleSaveCard = async () => {
+    if (!selectedCard) return;
+
+    const updatedCardDetails = {
+      Card_Id: selectedCard.Card_Id,
+      kcc_Id: kccId,
+      Max_Amount:MaxAmount,
+      Card_Status: cardStatus,
+      Acces_Status: accessStatus,
+    };
+
+    try {
+      await axios.put('http://localhost:5000/updateCard', updatedCardDetails); // Update endpoint
+      alert('Card details updated successfully');
+      fetchAvailableCards(); // Refresh card list after updating
+      setIsEditing(false); // Disable edit mode
+    } catch (error) {
+      if (error.response && error.response.data.message) {
+        alert(error.response.data.message); // Show backend error message
+      } else {
+        alert('Error Updating card');
+      }
+    }
   };
 
-  // filter cards details 
-  const filteredCards = cards.filter((card) => {
-    return (
-      (searchCardId === '' || card.card_id.toString().includes(searchCardId)) &&
-      (searchKccId === '' || card.kcc_id.toString().includes(searchKccId))
-    );
-  });
-  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRfidData();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (rfidData.decimal_value) {
+      setCardId(rfidData.decimal_value);
+    }
+  }, [rfidData]);
+
+  useEffect(() => {
+    fetchAvailableCards(); // Fetch cards on component mount
+  }, []);
+
   return (
-    <Box sx={{ padding: '20px', backgroundColor: '#e0f7fa', minHeight: 'auto' }}>
-      {/* Add Card Section */}
-      <Box
-        sx={{
-          backgroundColor: '#fff',
-          padding: '20px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          maxWidth: '800px',
-          margin: '0 auto',
-          mb: 4
-        }}
-      >
-        <Typography variant="h5" gutterBottom sx={{ color: '#00796b', fontWeight: 'bold' }}>
-          Add Card Details
-        </Typography>
-        <form onSubmit={handleAddCard}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Card ID"
-              variant="outlined"
-              value={addCardId}
-              disabled 
+    <div>
+      <h2>Add Card Details</h2>
+      <form onSubmit={handleAddCard}>
+        <div>
+          <label>
+            Card ID:
+            <input
+              type="text"
+              value={cardId}
+              onChange={(e) => setCardId(e.target.value)}
+              required
+              disabled={isEditing} // Disable input when in edit mode
             />
-            <TextField
-              label="KCC ID"
-              variant="outlined"
-              value={addKccId}
-              onChange={(e) => setAddKccId(e.target.value)}
+          </label>
+        </div>
+        <div>
+          <label>
+            KCC ID:
+            <input
+              type="text"
+              value={kccId}
+              onChange={(e) => setKccId(e.target.value)}
               required
             />
-            <TextField
-              label="Max Amount"
-              variant="outlined"
-              value={addMaxAmount}
-              onChange={(e) => setAddMaxAmount(e.target.value)}
+          </label>
+        </div>
+        <div>
+          <label>
+            Max Amount:
+            <input
+              type="text"
+              value={MaxAmount}
+              onChange={(e) => setMaxAmount(e.target.value)}
               required
             />
-            <Select
-              value={addCardStatus}
-              onChange={(e) => setAddCardStatus(e.target.value)}
-              displayEmpty
-              fullWidth
+          </label>
+        </div>
+        <div>
+          <label>
+            Card Status:
+            <select
+              value={cardStatus}
+              onChange={(e) => setCardStatus(e.target.value)}
             >
-              <MenuItem value="Active">Active</MenuItem>
-              <MenuItem value="Inprocess">Inprocess</MenuItem>
-              <MenuItem value="Deactive">Deactive</MenuItem>
-            </Select>
-            <Select
-              value={addAccessStatus}
-              onChange={(e) => setAddAccessStatus(e.target.value)}
-              displayEmpty
-              fullWidth
+              <option value="Active">Active</option>
+              <option value="Inprocess">Inprocess</option>
+              <option value="Deactive">Deactive</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>
+            Access Status:
+            <select
+              value={accessStatus}
+              onChange={(e) => setAccessStatus(e.target.value)}
             >
-              <MenuItem value="Manager">Manager</MenuItem>
-              <MenuItem value="Customer">Customer</MenuItem>
-              <MenuItem value="Guest">Guest</MenuItem>
-            </Select>
-            <Button type="submit" variant="contained" color="primary">
-              Add Card
-            </Button>
-          </Box>
-        </form>
-      </Box>
+              <option value="Manager">Manager</option>
+              <option value="Customer">Customer</option>
+              <option value="Guest">Guest</option>
+            </select>
+          </label>
+        </div>
+        <button type="submit" disabled={isEditing}>Add Card</button>
+      </form>
 
-      <Divider sx={{ my: 4 }} />
-
-      {/* Available Cards Section */}
-      <Box
-        sx={{
-          backgroundColor: '#fff',
-          padding: '20px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          maxWidth: '800px',
-          margin: '0 auto'
-        }}
-      >
-        <Typography variant="h5" gutterBottom sx={{ color: '#00796b', fontWeight: 'bold' }}>
-          Available Cards
-        </Typography>
-
-        {/* Search Fields */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <TextField
-            label="Search by Card ID"
-            variant="outlined"
-            value={searchCardId}
-            onChange={(e) => setSearchCardId(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Search by KCC ID"
-            variant="outlined"
-            value={searchKccId}
-            onChange={(e) => setSearchKccId(e.target.value)}
-            fullWidth
-          />
-        </Box>
-
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Card ID</TableCell>
-                <TableCell>KCC ID</TableCell>
-                <TableCell>Max Amount</TableCell>
-                <TableCell>Card Status</TableCell>
-                <TableCell>Access Status</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredCards.length > 0 ? (
-                filteredCards.map((card) => (
-                  <TableRow key={card.card_id}>
-                    <TableCell>{card.card_id}</TableCell>
-                    <TableCell>
-                      {isEditing === card.card_id ? (
-                        <TextField
-                          value={kccId}
-                          onChange={(e) => setKccId(e.target.value)}
-                        />
-                      ) : (
-                        card.kcc_id
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing === card.card_id ? (
-                        <TextField
-                          value={maxAmount}
-                          onChange={(e) => setMaxAmount(e.target.value)}
-                        />
-                      ) : (
-                        card.max_amount
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing === card.card_id ? (
-                        <Select
-                          value={cardStatus}
-                          onChange={(e) => setCardStatus(e.target.value)}
-                          displayEmpty
-                          fullWidth
-                        >
-                          <MenuItem value="Active">Active</MenuItem>
-                          <MenuItem value="Inprocess">Inprocess</MenuItem>
-                          <MenuItem value="Deactive">Deactive</MenuItem>
-                        </Select>
-                      ) : (
-                        card.card_status
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing === card.card_id ? (
-                        <Select
-                          value={accessStatus}
-                          onChange={(e) => setAccessStatus(e.target.value)}
-                          displayEmpty
-                          fullWidth
-                        >
-                          <MenuItem value="Manager">Manager</MenuItem>
-                          <MenuItem value="Customer">Customer</MenuItem>
-                          <MenuItem value="Guest">Guest</MenuItem>
-                        </Select>
-                      ) : (
-                        card.acces_status
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing === card.card_id ? (
-                        <>
-                          <IconButton onClick={() => handleSaveCard(card.card_id)}color="primary">
-                            <SaveIcon />
-                          </IconButton>
-                          <IconButton onClick={handleCancelEdit}color="secondary">
-                            <CancelIcon />
-                          </IconButton>
-                        </>
-                      ) : (
-                        <>
-                           <IconButton onClick={() => handleEditCard(card)} color="primary">
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton onClick={() => handleRemoveCard(card.card_id)} color="secondary">
-                            <DeleteIcon />
-                          </IconButton>
-                        </>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6}>No cards available</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-    </Box>
+      <h2>Available Cards</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Card ID</th>
+            <th>KCC ID</th>
+            <th>Max Amount</th>
+            <th>Card Status</th>
+            <th>Access Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cards.map((card) => (
+            <tr key={card.Card_Id}>
+              <td>{card.Card_Id}</td>
+              <td>
+                <input
+                  type="text"
+                  defaultValue={card.Kcc_Id}
+                  onChange={(e) => setKccId(e.target.value)}
+                  disabled={!isEditing || selectedCard?.Card_Id !== card.Card_Id} // Disable when not editing
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  defaultValue={card.Max_Amount}
+                  onChange={(e) => setMaxAmount(e.target.value)}
+                  disabled={!isEditing || selectedCard?.Card_Id !== card.Card_Id} // Disable when not editing
+                />
+              </td>
+              <td>
+                <select
+                  defaultValue={card.Card_Status}
+                  onChange={(e) => setCardStatus(e.target.value)}
+                  disabled={!isEditing || selectedCard?.Card_Id !== card.Card_Id} // Disable when not editing
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inprocess">Inprocess</option>
+                  <option value="Deactive">Deactive</option>
+                </select>
+              </td>
+              <td>
+                <select
+                  defaultValue={card.Acces_Status}
+                  onChange={(e) => setAccessStatus(e.target.value)}
+                  disabled={!isEditing || selectedCard?.Card_Id !== card.Card_Id} // Disable when not editing
+                >
+                  <option value="Manager">Manager</option>
+                  <option value="Customer">Customer</option>
+                  <option value="Guest">Guest</option>
+                </select>
+              </td>
+              <td>
+                <button onClick={() => handleEditCard(card)}>
+                  {isEditing && selectedCard?.Card_Id === card.Card_Id ? 'Editing' : 'Edit'}
+                </button>
+                {isEditing && selectedCard?.Card_Id === card.Card_Id && (
+                  <button onClick={handleSaveCard}>Save</button>
+                )}
+                <button onClick={() => handleRemoveCard(card.Card_Id)}>Remove</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 
-export default Cards;
+export default App;

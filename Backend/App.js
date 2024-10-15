@@ -35,8 +35,8 @@ const dbConfig = {
     
 };
 
-// // Connect to the database
-// sql.connect(dbConfig).catch(err => console.log("Database connection error:", err));
+// Connect to the database
+sql.connect(dbConfig).catch(err => console.log("Database connection error:", err));
 
 app.post('/register', async (req, res) => {
     const { User_Id, User_Name, User_Password } = req.body;
@@ -81,7 +81,7 @@ app.get('/users', async (req, res) => {
 
 app.put('/updateUser', async (req, res) => {
     const { User_Id, User_Name, User_Password } = req.body;
-    //console.log('ID>>'+User_Id+'name>>'+ User_Name + '<<pass>>' +User_Password) 
+    console.log('name>>'+user_name+'<<pass>>'+user_password) 
     try {
         const pool = await sql.connect(dbConfig);
 
