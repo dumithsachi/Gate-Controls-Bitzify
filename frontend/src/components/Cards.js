@@ -7,16 +7,16 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 
 const Cards = () => {
-  // State for fetching RFID data
-  const [rfidData, setRfidData] = useState({});
-  
+  // State for WebSocket RFID data
+  const [rfidData, setRfidData] = useState(null);
+
   // Separate state for the Add Card form
   const [addCardId, setAddCardId] = useState('');
   const [addKccId, setAddKccId] = useState('');
   const [addMaxAmount, setAddMaxAmount] = useState('');
   const [addCardStatus, setAddCardStatus] = useState('Active');
   const [addAccessStatus, setAddAccessStatus] = useState('Manager');
-  
+
   // State for editing cards
   const [kccId, setKccId] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
@@ -25,12 +25,38 @@ const Cards = () => {
   const [cards, setCards] = useState([]);
   const [isEditing, setIsEditing] = useState('');
 
-  // Fetch RFID data on interval
+  // State for search by card id and kcc id
+  const [searchCardId, setSearchCardId] = useState('');
+  const [searchKccId, setSearchKccId] = useState('');
+
+
+  // Connect to WebSocket to receive RFID data
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchRfidData();
-    }, 1000);
-    return () => clearInterval(interval);
+    const ws = new WebSocket('ws://20.92.202.139:3600');
+
+    ws.onopen = () => {
+      console.log('Connected to WebSocket server');
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setRfidData(data);
+
+      // Check if the unique_key is 'THAI' before setting the Card ID
+      if (data.unique_key === 'THAI') {
+        setAddCardId(data.decimal_value || ''); 
+      }
+      
+      console.log('Received data from WebSocket:', data);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
 
   // Fetch available cards
@@ -38,19 +64,9 @@ const Cards = () => {
     fetchAvailableCards();
   }, []);
 
-  const fetchRfidData = async () => {
-    try {
-      const response = await axios.get('http://127.0.0.1:8000/get_rfid');
-      setRfidData(response.data);
-      setAddCardId(response.data.decimal_value || ''); // Set the Add Card form's cardId
-    } catch (error) {
-      console.error('Error fetching RFID data:', error);
-    }
-  };
-
   const fetchAvailableCards = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/getCards');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/getCards`);
       setCards(response.data);
     } catch (error) {
       console.error('Error fetching available cards:', error);
@@ -60,7 +76,7 @@ const Cards = () => {
   // Add Card
   const handleAddCard = async (e) => {
     e.preventDefault();
-    if (!rfidData.decimal_value) {
+    if (!rfidData || !rfidData.decimal_value) {
       alert('No RFID data available. Please scan the card.');
       return;
     }
@@ -72,14 +88,14 @@ const Cards = () => {
       Acces_Status: addAccessStatus,
     };
     try {
-      await axios.post('http://localhost:5000/createCard', newCardDetails);
+      await axios.post(`${process.env.REACT_APP_API_URL}/createCard`, newCardDetails);
       // Clear Add Card form after submission
       setAddCardId('');
       setAddKccId('');
       setAddMaxAmount('');
       setAddCardStatus('Active');
       setAddAccessStatus('Manager');
-      setRfidData({});
+      setRfidData(null);
       alert('Card details added successfully');
       fetchAvailableCards();
     } catch (error) {
@@ -93,7 +109,7 @@ const Cards = () => {
     const confirmRemove = window.confirm("Are you sure you want to remove this card?");
     if (confirmRemove) {
       try {
-        await axios.delete(`http://localhost:5000/deleteCard/${cardId}`);
+        await axios.delete(`${process.env.REACT_APP_API_URL}/deleteCard/${cardId}`);
         alert('Card removed successfully');
         fetchAvailableCards();
       } catch (error) {
@@ -122,7 +138,7 @@ const Cards = () => {
     };
 
     try {
-      await axios.put(`http://localhost:5000/updateCard`, updatedCardDetails);
+      await axios.put(`${process.env.REACT_APP_API_URL}/updateCard`, updatedCardDetails);
       alert('Card details updated successfully');
       fetchAvailableCards();
       setIsEditing(null);  // Exit editing mode
@@ -140,6 +156,14 @@ const Cards = () => {
     setAccessStatus('Manager');
   };
 
+  // filter cards details 
+  const filteredCards = cards.filter((card) => {
+    return (
+      (searchCardId === '' || card.card_id.toString().includes(searchCardId)) &&
+      (searchKccId === '' || card.kcc_id.toString().includes(searchKccId))
+    );
+  });
+  
   return (
     <Box sx={{ padding: '20px', backgroundColor: '#e0f7fa', minHeight: 'auto' }}>
       {/* Add Card Section */}
@@ -163,7 +187,7 @@ const Cards = () => {
               label="Card ID"
               variant="outlined"
               value={addCardId}
-              disabled // disable card ID input
+              disabled 
             />
             <TextField
               label="KCC ID"
@@ -222,89 +246,122 @@ const Cards = () => {
         <Typography variant="h5" gutterBottom sx={{ color: '#00796b', fontWeight: 'bold' }}>
           Available Cards
         </Typography>
+
+        {/* Search Fields */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <TextField
+            label="Search by Card ID"
+            variant="outlined"
+            value={searchCardId}
+            onChange={(e) => setSearchCardId(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Search by KCC ID"
+            variant="outlined"
+            value={searchKccId}
+            onChange={(e) => setSearchKccId(e.target.value)}
+            fullWidth
+          />
+        </Box>
+
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell><strong>Card ID</strong></TableCell>
-                <TableCell><strong>KCC ID</strong></TableCell>
-                <TableCell><strong>Max Amount</strong></TableCell>
-                <TableCell><strong>Card Status</strong></TableCell>
-                <TableCell><strong>Access Status</strong></TableCell>
-                <TableCell><strong>Actions</strong></TableCell>
+                <TableCell>Card ID</TableCell>
+                <TableCell>KCC ID</TableCell>
+                <TableCell>Max Amount</TableCell>
+                <TableCell>Card Status</TableCell>
+                <TableCell>Access Status</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {cards.map((card) => (
-                <TableRow key={card.card_id}>
-                  <TableCell>{card.card_id}</TableCell>
-                  {isEditing === card.card_id ? (
-                    <>
-                      <TableCell>
+              {filteredCards.length > 0 ? (
+                filteredCards.map((card) => (
+                  <TableRow key={card.card_id}>
+                    <TableCell>{card.card_id}</TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
                         <TextField
                           value={kccId}
                           onChange={(e) => setKccId(e.target.value)}
-                          variant="outlined"
-                          size="small"
                         />
-                      </TableCell>
-                      <TableCell>
+                      ) : (
+                        card.kcc_id
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
                         <TextField
                           value={maxAmount}
                           onChange={(e) => setMaxAmount(e.target.value)}
-                          variant="outlined"
-                          size="small"
                         />
-                      </TableCell>
-                      <TableCell>
+                      ) : (
+                        card.max_amount
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
                         <Select
                           value={cardStatus}
                           onChange={(e) => setCardStatus(e.target.value)}
-                          size="small"
+                          displayEmpty
+                          fullWidth
                         >
                           <MenuItem value="Active">Active</MenuItem>
                           <MenuItem value="Inprocess">Inprocess</MenuItem>
                           <MenuItem value="Deactive">Deactive</MenuItem>
                         </Select>
-                      </TableCell>
-                      <TableCell>
+                      ) : (
+                        card.card_status
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
                         <Select
                           value={accessStatus}
                           onChange={(e) => setAccessStatus(e.target.value)}
-                          size="small"
+                          displayEmpty
+                          fullWidth
                         >
                           <MenuItem value="Manager">Manager</MenuItem>
                           <MenuItem value="Customer">Customer</MenuItem>
                           <MenuItem value="Guest">Guest</MenuItem>
                         </Select>
-                      </TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => handleSaveCard(card.card_id)}>
-                          <SaveIcon />
-                        </IconButton>
-                        <IconButton onClick={handleCancelEdit}>
-                          <CancelIcon />
-                        </IconButton>
-                      </TableCell>
-                    </>
-                  ) : (
-                    <>
-                      <TableCell>{card.kcc_id}</TableCell>
-                      <TableCell>{card.max_amount}</TableCell>
-                      <TableCell>{card.card_status}</TableCell>
-                      <TableCell>{card.acces_status}</TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => handleEditCard(card)}>
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton onClick={() => handleRemoveCard(card.card_id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </>
-                  )}
+                      ) : (
+                        card.acces_status
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing === card.card_id ? (
+                        <>
+                          <IconButton onClick={() => handleSaveCard(card.card_id)}color="primary">
+                            <SaveIcon />
+                          </IconButton>
+                          <IconButton onClick={handleCancelEdit}color="secondary">
+                            <CancelIcon />
+                          </IconButton>
+                        </>
+                      ) : (
+                        <>
+                           <IconButton onClick={() => handleEditCard(card)} color="primary">
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton onClick={() => handleRemoveCard(card.card_id)} color="secondary">
+                            <DeleteIcon />
+                          </IconButton>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6}>No cards available</TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </TableContainer>
