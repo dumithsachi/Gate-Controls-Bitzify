@@ -21,7 +21,7 @@ const Signup = () => {
 
     const fetchUsers = async () => {
         try {
-            const res = await axios.get(`${process.env.REACT_APP_API_URL}/users`);
+            const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/users`);
             setUsers(res.data);
         } catch (err) {
             console.error('Error fetching users', err);
@@ -41,11 +41,11 @@ const Signup = () => {
         try {
             if (editMode) {
                 
-                await axios.put(`${process.env.REACT_APP_API_URL}/updateUser`, { ...formData, User_Id: currentUserId });
+                await axios.put(`${process.env.REACT_APP_API_URL}/api/users/updateUser`, { ...formData, User_Id: currentUserId });
                 alert('User updated successfully');
                 setEditMode(false);
             } else {
-                const res = await axios.post(`${process.env.REACT_APP_API_URL}/register`, formData);
+                const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/users/register`, formData);
                 alert(res.data.message);
             }
             setFormData({ User_Id: '', User_Name: '', User_Password: '' });
@@ -66,7 +66,7 @@ const Signup = () => {
 
     const handleDelete = async (User_Id) => {
         try {
-            await axios.delete(`${process.env.REACT_APP_API_URL}/deleteUser/${User_Id}`);
+            await axios.delete(`${process.env.REACT_APP_API_URL}/api/users/deleteUser/${User_Id}`);
             alert('User deleted successfully');
             fetchUsers();
         } catch (err) {

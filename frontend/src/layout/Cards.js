@@ -44,7 +44,7 @@ const Cards = () => {
 
       // Check if the unique_key is 'THAI' before setting the Card ID
       if (data.unique_key === 'THAI') {
-        setAddCardId(data.decimal_value || ''); // Set Add Card form's Card ID with the RFID decimal value
+        setAddCardId(data.decimal_value || ''); 
       }
       
       console.log('Received data from WebSocket:', data);
@@ -66,7 +66,7 @@ const Cards = () => {
 
   const fetchAvailableCards = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/getCards');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/getCards`);
       setCards(response.data);
     } catch (error) {
       console.error('Error fetching available cards:', error);
@@ -88,7 +88,7 @@ const Cards = () => {
       Acces_Status: addAccessStatus,
     };
     try {
-      await axios.post('http://localhost:5000/createCard', newCardDetails);
+      await axios.post(`${process.env.REACT_APP_API_URL}/createCard`, newCardDetails);
       // Clear Add Card form after submission
       setAddCardId('');
       setAddKccId('');
@@ -109,7 +109,7 @@ const Cards = () => {
     const confirmRemove = window.confirm("Are you sure you want to remove this card?");
     if (confirmRemove) {
       try {
-        await axios.delete(`http://localhost:5000/deleteCard/${cardId}`);
+        await axios.delete(`${process.env.REACT_APP_API_URL}/deleteCard/${cardId}`);
         alert('Card removed successfully');
         fetchAvailableCards();
       } catch (error) {
@@ -138,7 +138,7 @@ const Cards = () => {
     };
 
     try {
-      await axios.put(`http://localhost:5000/updateCard`, updatedCardDetails);
+      await axios.put(`${process.env.REACT_APP_API_URL}/updateCard`, updatedCardDetails);
       alert('Card details updated successfully');
       fetchAvailableCards();
       setIsEditing(null);  // Exit editing mode

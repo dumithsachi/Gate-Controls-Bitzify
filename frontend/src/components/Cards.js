@@ -66,7 +66,7 @@ const Cards = () => {
 
   const fetchAvailableCards = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/getCards`);
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/cards`);
       setCards(response.data);
     } catch (error) {
       console.error('Error fetching available cards:', error);
@@ -88,7 +88,7 @@ const Cards = () => {
       Acces_Status: addAccessStatus,
     };
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/createCard`, newCardDetails);
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/cards/createCard`, newCardDetails);
       // Clear Add Card form after submission
       setAddCardId('');
       setAddKccId('');
@@ -109,7 +109,7 @@ const Cards = () => {
     const confirmRemove = window.confirm("Are you sure you want to remove this card?");
     if (confirmRemove) {
       try {
-        await axios.delete(`${process.env.REACT_APP_API_URL}/deleteCard/${cardId}`);
+        await axios.delete(`${process.env.REACT_APP_API_URL}/api/cards/deleteCard/${cardId}`);
         alert('Card removed successfully');
         fetchAvailableCards();
       } catch (error) {
@@ -138,7 +138,7 @@ const Cards = () => {
     };
 
     try {
-      await axios.put(`${process.env.REACT_APP_API_URL}/updateCard`, updatedCardDetails);
+      await axios.put(`${process.env.REACT_APP_API_URL}/api/cards/updateCard`, updatedCardDetails);
       alert('Card details updated successfully');
       fetchAvailableCards();
       setIsEditing(null);  // Exit editing mode
@@ -221,7 +221,6 @@ const Cards = () => {
             >
               <MenuItem value="Manager">Manager</MenuItem>
               <MenuItem value="Customer">Customer</MenuItem>
-              <MenuItem value="Guest">Guest</MenuItem>
             </Select>
             <Button type="submit" variant="contained" color="primary">
               Add Card
@@ -328,7 +327,7 @@ const Cards = () => {
                         >
                           <MenuItem value="Manager">Manager</MenuItem>
                           <MenuItem value="Customer">Customer</MenuItem>
-                          <MenuItem value="Guest">Guest</MenuItem>
+                          
                         </Select>
                       ) : (
                         card.acces_status

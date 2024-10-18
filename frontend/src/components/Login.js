@@ -17,11 +17,12 @@ const Login = () => {
             [e.target.name]: e.target.value
         });
     };
-
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log('Login data being sent:', formData); 
         try {
-            await axios.post(`${process.env.REACT_APP_API_URL}/login`, formData);
+            await axios.post(`${process.env.REACT_APP_API_URL}/api/users/login`, formData);
             alert('Login successful');
             navigate('/dashboard', { state: { username: formData.user_name } });
         } catch (err) {
